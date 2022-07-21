@@ -8,7 +8,6 @@ import {
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import { GOOGLE_MAPS_API_KEY, OPENWEATHER_API_KEY } from '@env';
 
@@ -51,49 +50,55 @@ export default function App() {
 
     setForecast(json.daily);
   };
-  console.log('forecast', forecast);
 
   return (
     <View style={styles.container}>
-      <View style={styles.city}>
-        <Text style={styles.cityName}>{location}</Text>
-      </View>
-      <View style={styles.weather}>
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          // contentContainerStyle={styles.weather}
-        >
-          {forecast.length === 0 ? (
-            <View style={styles.daily}>
-              <ActivityIndicator size="large" color="white" style={styles.loading} />
-            </View>
-          ) : (
-            forecast.map(({ dt, temp, weather }, index) => {
-              const date = new Date(dt * 1000);
-              const weekday = new Intl.DateTimeFormat('default' || 'ko-KR', {
-                weekday: 'long',
-              }).format(date);
-
-              return (
-                <View style={styles.daily} key={index}>
-                  <Text style={styles.weekday}>{weekday}</Text>
-                  <Text style={styles.temp}>{`${Math.round(temp.day)}º`}</Text>
-                  <View style={styles.iconContainer}>
-                    <Image
-                      style={styles.icon}
-                      source={{ uri: `http://openweathermap.org/img/wn/${weather[0].icon}@2x.png` }}
-                    />
-                    <Text style={styles.description}>{weather[0].description}</Text>
-                  </View>
+      {isGranted ? (
+        <>
+          <View style={styles.city}>
+            <Text style={styles.cityName}>{location}</Text>
+          </View>
+          <View style={styles.weather}>
+            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+              {forecast.length === 0 ? (
+                <View style={styles.daily}>
+                  <ActivityIndicator size="large" color="white" style={styles.loading} />
                 </View>
-              );
-            })
-          )}
-        </ScrollView>
-      </View>
-      <StatusBar style="auto" />
+              ) : (
+                forecast.map(({ dt, temp, weather }, index) => {
+                  const date = new Date(dt * 1000);
+                  const weekday = new Intl.DateTimeFormat('default' || 'ko-KR', {
+                    weekday: 'long',
+                  }).format(date);
+
+                  return (
+                    <View style={styles.daily} key={index}>
+                      <Text style={styles.weekday}>{weekday}</Text>
+                      <Text style={styles.temp}>{`${Math.round(temp.day)}º`}</Text>
+                      <View style={styles.iconContainer}>
+                        <Image
+                          style={styles.icon}
+                          source={{
+                            uri: `http://openweathermap.org/img/wn/${weather[0].icon}@2x.png`,
+                          }}
+                        />
+                        <Text style={styles.description}>{weather[0].description}</Text>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </>
+      ) : (
+        <View style={styles.isNotGranted}>
+          <Text style={styles.askPermissionText}>
+            {`설정에서 위치 접근을
+허용해 주세요. 🥺`}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -102,6 +107,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'pink',
+  },
+  isNotGranted: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+  askPermissionText: {
+    textAlign: 'center',
+    fontSize: 24,
+    lineHeight: 36,
   },
   city: {
     flex: 1,
