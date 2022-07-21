@@ -1,7 +1,16 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  Image,
+  ScrollView,
+  Dimensions,
+  ActivityIndicator,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
+import { GOOGLE_MAPS_API_KEY, OPENWEATHER_API_KEY } from '@env';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -11,7 +20,7 @@ export default function App() {
   const [isGranted, setIsGranted] = useState(true);
 
   useEffect(() => {
-    setForecast(getWeather().daily);
+    getWeather();
   }, []);
 
   const getWeather = async () => {
@@ -24,7 +33,7 @@ export default function App() {
       coords: { latitude, longitude },
     } = await Location.getCurrentPositionAsync({ accuracy: 5 });
 
-    Location.setGoogleApiKey('AIzaSyAXH2E4Ozs-WgZFW4bA70qNLdr2gG1AfJI');
+    Location.setGoogleApiKey(GOOGLE_MAPS_API_KEY);
 
     const currentLocation = await Location.reverseGeocodeAsync(
       { latitude, longitude },
@@ -35,62 +44,55 @@ export default function App() {
       currentLocation[0].district || currentLocation[0].city || currentLocation[0].region,
     );
 
-    const OPENWEATHER_API_KEY = '6c8922b062de26ebd060bbe0a55e3e98';
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/onecall?lat=${latitude}&lon=${longitude}&units=metric&lang=kr&exclude={alerts}&appid=${OPENWEATHER_API_KEY}`,
+    );
+    const json = await response.json();
 
-    const json = (
-      await fetch(
-        `https://api.openweathermap.org/data/2.5/onecall?lat=${latitude}&lon=${longitude}&exclude={alerts}&appid=${OPENWEATHER_API_KEY}`,
-      )
-    ).json();
-
-    console.log(json);
-    console.log(json.daily);
-    return json;
+    setForecast(json.daily);
   };
-  console.log(forecast);
+  console.log('forecast', forecast);
 
   return (
     <View style={styles.container}>
       <View style={styles.city}>
         <Text style={styles.cityName}>{location}</Text>
       </View>
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.weather}
-      >
-        {forecast?.length === 0 ? (
-          <View style={styles.day}>
-            <ActivityIndicator size="large" color="white" style={styles.loading} />
-          </View>
-        ) : (
-          forecast?.map(({ temp, weather }, index) => {
-            <View style={styles.day} key={index}>
-              <Text style={styles.temp}>24º</Text>
-              <Text style={styles.description}>{weather[0]?.main}</Text>
-            </View>;
-          })
-          // <>
-          //   <View style={styles.day}>
-          //     <Text style={styles.temp}>24º</Text>
-          //     <Text style={styles.description}>일요일</Text>
-          //   </View>
-          //   <View style={styles.day}>
-          //     <Text style={styles.temp}>29º</Text>
-          //     <Text style={styles.description}>일요일</Text>
-          //   </View>
-          //   <View style={styles.day}>
-          //     <Text style={styles.temp}>29º</Text>
-          //     <Text style={styles.description}>일요일</Text>
-          //   </View>
-          //   <View style={styles.day}>
-          //     <Text style={styles.temp}>29º</Text>
-          //     <Text style={styles.description}>일요일</Text>
-          //   </View>
-          // </>
-        )}
-      </ScrollView>
+      <View style={styles.weather}>
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          // contentContainerStyle={styles.weather}
+        >
+          {forecast.length === 0 ? (
+            <View style={styles.daily}>
+              <ActivityIndicator size="large" color="white" style={styles.loading} />
+            </View>
+          ) : (
+            forecast.map(({ dt, temp, weather }, index) => {
+              const date = new Date(dt * 1000);
+              const weekday = new Intl.DateTimeFormat('default' || 'ko-KR', {
+                weekday: 'long',
+              }).format(date);
+
+              return (
+                <View style={styles.daily} key={index}>
+                  <Text style={styles.weekday}>{weekday}</Text>
+                  <Text style={styles.temp}>{`${Math.round(temp.day)}º`}</Text>
+                  <View style={styles.iconContainer}>
+                    <Image
+                      style={styles.icon}
+                      source={{ uri: `http://openweathermap.org/img/wn/${weather[0].icon}@2x.png` }}
+                    />
+                    <Text style={styles.description}>{weather[0].description}</Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
+      </View>
       <StatusBar style="auto" />
     </View>
   );
@@ -112,18 +114,34 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   weather: {
+    flex: 2,
     backgroundColor: 'lavender',
   },
-  day: {
+  daily: {
     alignItems: 'center',
     width: SCREEN_WIDTH,
   },
+  weekday: {
+    marginTop: 36,
+    fontSize: 36,
+  },
+  iconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   temp: {
-    fontSize: 120,
+    marginTop: 20,
+    marginBottom: 20,
+    marginLeft: 16,
+    fontSize: 100,
   },
   description: {
-    marginTop: 10,
-    fontSize: 36,
+    marginRight: 24,
+    fontSize: 28,
+  },
+  icon: {
+    width: 60,
+    height: 60,
   },
   loading: {
     marginTop: 50,
